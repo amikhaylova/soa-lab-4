@@ -1,0 +1,11 @@
+com\soa\controller\OscarSOAPController.class
+com\soa\service\OscarService.class
+com\soa\exception\ServerErrorMapper.class
+com\soa\enums\MovieGenre.class
+com\soa\enums\EnumAdapter.class
+com\soa\exception\BadRequestMapper.class
+com\soa\controller\OscarSOAPService.class
+com\soa\filter\CorsFilter.class
+com\soa\dto\ExceptionDTO.class
+com\soa\exception\GenreDoesNotExistException.class
+com\soa\Main.class

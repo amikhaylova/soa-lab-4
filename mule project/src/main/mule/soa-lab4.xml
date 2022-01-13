@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="a1bcd865-c8bb-4aaa-9b9a-bcd1a1933239" basePath="oscar" >
+		<http:listener-connection host="localhost" port="7777" />
+	</http:listener-config>
+	<wsc:config name="Web_Service_Consumer_Config" doc:name="Web Service Consumer Config" doc:id="cae35133-05f5-425f-b1a1-92a9043b4883" >
+		<wsc:connection wsdlLocation="http://pluto:8080/soa-lab3-controller/OscarSOAPControllerService?wsdl" service="OscarSOAPControllerService" port="OscarSOAPControllerPort" address="http://pluto:8080/soa-lab3-controller/OscarSOAPControllerService" >
+			<wsc:web-service-security actor="http://schemas.xmlsoap.org/soap/actor/next" />
+		</wsc:connection>
+	</wsc:config>
+	<flow name="reallocate_oscars_flow" doc:id="b72b8e8e-f202-4ca5-a1b6-b670380fe88a" >
+		<http:listener doc:name="Listener for redistribute-rewards" doc:id="99178f1a-7ab0-4018-b4af-1f281db4ea0b" config-ref="HTTP_Listener_config" path="genres/redistribute-rewards/{fromGenre}/{toGenre}">
+			<http:response >
+				<http:body ><![CDATA[#[output application/json
+---
+payload]]]></http:body>
+				<http:headers ><![CDATA[#[output application/java
+---
+{
+	"Access-Control-Allow-Origin" : "*"
+}]]]></http:headers>
+			</http:response>
+			<http:error-response statusCode="#[vars.httpStatus]" reasonPhrase="#[vars.responsePhrase]"/>
+		</http:listener>
+		<set-variable value="#[attributes.uriParams.fromGenre]" doc:name="Set from genre" doc:id="1b9448d4-f70f-4a3b-b4b6-0661542c4222" variableName="fromGenre"/>
+		<set-variable value="#[attributes.uriParams.toGenre]" doc:name="Set to genre" doc:id="dea10c45-a6de-429f-ba36-4b88f1f8f0f7" variableName="toGenre"/>
+		<logger level="INFO" doc:name="Log Variables" doc:id="d2a33f12-9a60-431a-963d-8771fef26bc9" message="Vars: #[vars.fromGenre] #[vars.toGenre]"/>
+		<choice doc:name="Choice" doc:id="6086c3c9-e41b-4bfe-813b-1a5fd0bf90a7" >
+			<when expression='#[(vars.fromGenre == "DRAMA" or vars.fromGenre == "TRAGEDY" or vars.fromGenre == "HORROR" or vars.fromGenre == "FANTASY" ) and (vars.toGenre == "DRAMA" or vars.toGenre == "TRAGEDY" or vars.toGenre == "HORROR" or vars.toGenre == "FANTASY" )]'>
+				<wsc:consume operation="reallocateOscars" doc:name="Consume ReallocateOscars" doc:id="7dcc5db1-dde7-4632-a930-d72dd52470c3" config-ref="Web_Service_Consumer_Config">
+			<wsc:message>
+				<wsc:body><![CDATA[#[output application/xml
+ns ns0 http://controller.soa.com/
+---
+{
+	ns0#reallocateOscars: {
+		FromGenre: vars.fromGenre as String,
+		ToGenre: vars.toGenre as String
+	}
+}]]]></wsc:body>
+			</wsc:message>
+		</wsc:consume>
+				<logger level="INFO" doc:name="Log Response" doc:id="2daed585-0039-49d1-891d-1eaea2c48e5e" message="Resp: #[payload.body]" />
+				<ee:transform doc:name="Transform Message" doc:id="a92d5955-61e6-4837-9cd0-7e520781a1bc">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+ns ns0 http://controller.soa.com/
+---
+{
+	response: payload.body.ns0#reallocateOscarsResponse.return
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			</when>
+			<otherwise >
+				<raise-error doc:name="Raise error GENRES:MISSING" doc:id="e3b5bbb3-a257-4952-9c56-e810b951245b" type="GENRES:MISSING" description="Genre does not exist"/>
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="56e9476b-a7e3-490f-9112-4f7ceb213b26" type="GENRES:MISSING">
+				<set-variable value="400" doc:name="Set Status Code" doc:id="045819d5-0e49-4ee6-9ec1-5ab6098645da" variableName="httpStatus"/>
+				<set-variable value="Genre does not exist" doc:name="Set Response Phrase" doc:id="8776b866-34ba-464b-b740-346afcf1c361" variableName="responsePhrase" />
+			</on-error-propagate>
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="4bd80a9e-ae9c-4614-b3bd-9bbe11a3a02a" >
+				<set-variable value="500" doc:name="Set Status Code" doc:id="ddfe2b17-02e4-47fc-9831-432fad40a7d5" variableName="httpStatus" />
+				<set-variable value="Internal Server Error" doc:name="Set Response Phrase" doc:id="32ca19c5-6440-42cf-b6a5-cc75172d4de5" variableName="responsePhrase" />
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="honor_by_length_flow" doc:id="abfcdf17-d92d-4e08-833a-d2e3266c3207" >
+		<http:listener doc:name="Listener for honor-by-length" doc:id="ed1e70cd-0e79-48f1-b009-a2ecbc947f52" config-ref="HTTP_Listener_config" path="movies/honor-by-length/{minLength}/{oscarsAdd}" >
+			<http:response >
+				<http:headers ><![CDATA[#[output application/java
+---
+{
+	"Access-Control-Allow-Origin" : "*"
+}]]]></http:headers>
+			</http:response>
+			<http:error-response statusCode="#[vars.httpStatus]" reasonPhrase="#[vars.responsePhrase]" />
+		</http:listener>
+		<set-variable value="#[attributes.uriParams.minLength]" doc:name="Set minLength" doc:id="7c09dfc6-2e78-4ca7-a249-0dd969b7f765" variableName="minLength" />
+		<set-variable value="#[attributes.uriParams.oscarsAdd]" doc:name="Set oscarsAdd" doc:id="00748189-e6b4-4db7-be46-6e4c5b079bd8" variableName="oscarsAdd" />
+		<logger level="INFO" doc:name="Copy_of_Log Variables" doc:id="4ea35a88-4b7e-4187-94bd-add66d928e57" message="VARS: #[vars.minLength] #[vars.oscarsAdd]  #[typeOf(vars.minLength)]  #[typeOf(vars.oscarsAdd)] " />
+		<validation:is-number numberType="INTEGER" doc:name="minLength is number?" doc:id="ff333080-ac80-4e7b-966e-d86744e658ac" value="#[vars.minLength]" message="not integer" minValue="0"/>
+		<validation:is-number numberType="INTEGER" doc:name="oscarsAdd is number?" doc:id="7b2ca1fb-2b7b-44dc-b42d-3aba7c00d8b8" value="#[vars.oscarsAdd]" minValue="0" message="not integer" />
+		<wsc:consume doc:name="Consume" doc:id="dcd23b1a-8de0-4178-a48f-850a0b7b12c6" config-ref="Web_Service_Consumer_Config" operation="increaseOscarsWhereDurationIsGreater">
+					<wsc:message>
+						<wsc:body><![CDATA[#[output application/xml
+ns ns0 http://controller.soa.com/
+---
+{
+	ns0#increaseOscarsWhereDurationIsGreater: {
+		Duration: vars.minLength,
+		Oscars: vars.oscarsAdd
+	}
+}]]]></wsc:body>
+					</wsc:message>
+				</wsc:consume>
+		<logger level="INFO" doc:name="Log Response" doc:id="d18eb040-f552-4c79-bb45-f9a44a71aab7" message="Resp: #[payload.body]" />
+		<ee:transform doc:name="Copy_of_Transform Message" doc:id="2a7b01ad-e8c1-499a-bdb6-fe58b8175153">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+ns ns0 http://controller.soa.com/
+---
+{
+	response: (payload.body.ns0#increaseOscarsWhereDurationIsGreaterResponse.return default "")
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="e699a6b7-ab95-4761-a608-d7f7751be487" type="VALIDATION:INVALID_NUMBER">
+				<set-variable value="400" doc:name="Set Status Code" doc:id="13a7f834-41b7-48c6-a255-69f2b73a4ca6" variableName="httpStatus" />
+				<set-variable value="Bad Request" doc:name="Set Response Phrase" doc:id="2ece7eae-2888-4a2b-a2e5-9ac6108b3cb8" variableName="responsePhrase" />
+			</on-error-propagate>
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="43442917-d860-43e9-aa48-f2e3fb517e31" >
+				<set-variable value="500" doc:name="Set Status Code" doc:id="06d4bd17-916f-4f43-8e00-cd13b79ad0ea" variableName="httpStatus" />
+				<set-variable value="Internal Server Error" doc:name="Set Response Phrase" doc:id="fd67c144-47b9-48d4-b360-61116a445378" variableName="responsePhrase" />
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+</mule>

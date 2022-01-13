@@ -1,0 +1,11 @@
+C:\Users\Alena\IdeaProjects\lab3_soa_controller\src\main\java\com\soa\enums\MovieGenre.java
+C:\Users\Alena\IdeaProjects\lab3_soa_controller\src\main\java\com\soa\dto\ExceptionDTO.java
+C:\Users\Alena\IdeaProjects\lab3_soa_controller\src\main\java\com\soa\controller\OscarSOAPService.java
+C:\Users\Alena\IdeaProjects\lab3_soa_controller\src\main\java\com\soa\exception\BadRequestMapper.java
+C:\Users\Alena\IdeaProjects\lab3_soa_controller\src\main\java\com\soa\filter\CorsFilter.java
+C:\Users\Alena\IdeaProjects\lab3_soa_controller\src\main\java\com\soa\exception\GenreDoesNotExistException.java
+C:\Users\Alena\IdeaProjects\lab3_soa_controller\src\main\java\com\soa\exception\ServerErrorMapper.java
+C:\Users\Alena\IdeaProjects\lab3_soa_controller\src\main\java\com\soa\enums\EnumAdapter.java
+C:\Users\Alena\IdeaProjects\lab3_soa_controller\src\main\java\com\soa\Main.java
+C:\Users\Alena\IdeaProjects\lab3_soa_controller\src\main\java\com\soa\service\OscarService.java
+C:\Users\Alena\IdeaProjects\lab3_soa_controller\src\main\java\com\soa\controller\OscarSOAPController.java
